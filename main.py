@@ -11,14 +11,14 @@ CHANNEL_ID = os.environ.get('DB_CHANNEL_ID')
 MONGO_URL = os.environ.get('MONGO_URL')
 
 # 👉 ADMIN ID
-ADMIN_ID = 8578466844 
+ADMIN_ID = 8032684065
 
 # 👉 FORCE SUBSCRIBE
-FORCE_SUB_USERNAME = "@anmol_movies_update" 
-FORCE_SUB_URL = "https://t.me/anmol_movies_update"
+FORCE_SUB_USERNAME = "@anmol_new" 
+FORCE_SUB_URL = "https://t.me/anmol_new"
 
 # 👉 BUTTON LINK
-YOUR_PERSONAL_LINK = "https://t.me/anmol_movies_update"
+YOUR_PERSONAL_LINK = "https://t.me/anmol_new"
 
 # --- DATABASE CONNECT ---
 try:
