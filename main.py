@@ -1,11 +1,10 @@
 import telebot
 import pymongo
-from bson.objectid 
-import ObjectId
 import os
 import time
 from telebot import types
 from keep_alive import keep_alive
+from bson.objectid import ObjectId  # 👉 Ye line bahut zaruri hai
 
 # --- CONFIGURATION ---
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -13,14 +12,14 @@ CHANNEL_ID = os.environ.get('DB_CHANNEL_ID')
 MONGO_URL = os.environ.get('MONGO_URL')
 
 # 👉 ADMIN ID
-ADMIN_ID = 8032684065
+ADMIN_ID = 8578466844 
 
 # 👉 FORCE SUBSCRIBE
-FORCE_SUB_USERNAME = "@anmol_new" 
-FORCE_SUB_URL = "https://t.me/anmol_new"
+FORCE_SUB_USERNAME = "@anmol_movies_update" 
+FORCE_SUB_URL = "https://t.me/anmol_movies_update"
 
 # 👉 BUTTON LINK
-YOUR_PERSONAL_LINK = "https://t.me/anmol_new"
+YOUR_PERSONAL_LINK = "https://t.me/anmol_movies_update"
 
 # --- DATABASE CONNECT ---
 try:
@@ -100,7 +99,54 @@ def broadcast_message(message):
             
     bot.reply_to(message, f"✅ Sent to {sent} users.")
 
-# --- 3. MOVIE SEARCH ---
+# --- 3. RECENT MOVIES (NEW FEATURE) ---
+@bot.message_handler(commands=['recent'])
+def recent_movies(message):
+    try:
+        # Last 10 movies nikalo (Nayi se Purani)
+        recent_docs = collection.find().sort('_id', -1).limit(10)
+        
+        markup = types.InlineKeyboardMarkup()
+        count = 0
+        for doc in recent_docs:
+            # Button banao: Movie ka Naam -> Click par ID milegi
+            # Call data chota rakhna padta hai isliye 'mov:' use kiya
+            btn = types.InlineKeyboardButton(doc['name'][:30], callback_data=f"mov:{doc['_id']}")
+            markup.add(btn)
+            count += 1
+        
+        if count == 0:
+            bot.reply_to(message, "❌ Abhi tak koi movie nahi dali hai.")
+        else:
+            bot.reply_to(message, "🎬 **Latest 10 Uploaded Movies:**\nDownload karne ke liye click karein 👇", reply_markup=markup, parse_mode="Markdown")
+    except Exception as e:
+        print(f"Error: {e}")
+        bot.reply_to(message, "❌ Error aa gaya.")
+
+# --- 4. BUTTON CLICK (NEW) ---
+@bot.callback_query_handler(func=lambda call: call.data.startswith('mov:'))
+def callback_send_movie(call):
+    try:
+        movie_id = call.data.split(':')[1]
+        doc = collection.find_one({'_id': ObjectId(movie_id)})
+        
+        if doc:
+            markup = types.InlineKeyboardMarkup()
+            btn = types.InlineKeyboardButton("⚡ Fast Download / Watch Online ⚡", url=YOUR_PERSONAL_LINK)
+            markup.add(btn)
+            
+            bot.send_video(
+                call.message.chat.id,
+                doc['file_id'],
+                caption=doc['name'],
+                reply_markup=markup
+            )
+        else:
+            bot.answer_callback_query(call.id, "❌ Ye movie shayad delete ho gayi hai.")
+    except Exception as e:
+        print(f"Error: {e}")
+
+# --- 5. MOVIE SEARCH (Default) ---
 @bot.message_handler(func=lambda m: True)
 def search_movie(message):
     user_id = message.from_user.id
@@ -131,57 +177,14 @@ def search_movie(message):
     else:
         bot.reply_to(message, "❌ Movie nahi mili.")
 
-# --- 4. RECENT MOVIES COMMAND ---
-@bot.message_handler(commands=['recent'])
-def recent_movies(message):
-    try:
-        # Last 10 movies nikalo (Nayi se Purani)
-        recent_docs = collection.find().sort('_id', -1).limit(10)
-        
-        markup = types.InlineKeyboardMarkup()
-        count = 0
-        for doc in recent_docs:
-            # Button banao: Movie ka Naam -> Click par ID milegi
-            btn = types.InlineKeyboardButton(doc['name'], callback_data=f"mov:{doc['_id']}")
-            markup.add(btn)
-            count += 1
-        
-        if count == 0:
-            bot.reply_to(message, "❌ Abhi tak koi movie nahi dali hai.")
-        else:
-            bot.reply_to(message, "🎬 **Latest 10 Uploaded Movies:**\nDownload karne ke liye click karein 👇", reply_markup=markup, parse_mode="Markdown")
-    except Exception as e:
-        print(f"Error: {e}")
-        bot.reply_to(message, "❌ Error aa gaya.")
-
-# --- 5. BUTTON CLICK HANDLER (Jab user list par click karega) ---
-@bot.callback_query_handler(func=lambda call: call.data.startswith('mov:'))
-def callback_send_movie(call):
-    try:
-        # Movie ki ID nikalo
-        movie_id = call.data.split(':')[1]
-        doc = collection.find_one({'_id': ObjectId(movie_id)})
-        
-        if doc:
-            # Wahi button wala link lagayenge
-            markup = types.InlineKeyboardMarkup()
-            btn = types.InlineKeyboardButton("⚡ Fast Download / Watch Online ⚡", url=YOUR_PERSONAL_LINK)
-            markup.add(btn)
-            
-            bot.send_video(
-                call.message.chat.id,
-                doc['file_id'],
-                caption=doc['name'],
-                reply_markup=markup
-            )
-        else:
-            bot.answer_callback_query(call.id, "❌ Ye movie shayad delete ho gayi hai.")
-    except Exception as e:
-        print(f"Error: {e}")
-
-# --- SERVER START (FIXED) ---
+# --- SERVER START ---
 keep_alive()
 print("🤖 Bot Ready! System Online.")
 
-# Yahan humne 'infinity' hata diya hai, ab ye pakka chalega
-bot.polling(none_stop=True)
+# Auto-Restart Loop
+while True:
+    try:
+        bot.polling(none_stop=True, interval=0)
+    except Exception as e:
+        print(f"⚠️ Error: {e}")
+        time.sleep(5)
