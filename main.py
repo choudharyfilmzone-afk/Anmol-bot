@@ -1,5 +1,6 @@
 import telebot
 import pymongo
+from bson.objectid import ObjectId
 import os
 import time
 from telebot import types
@@ -128,6 +129,54 @@ def search_movie(message):
         )
     else:
         bot.reply_to(message, "❌ Movie nahi mili.")
+
+# --- 4. RECENT MOVIES COMMAND ---
+@bot.message_handler(commands=['recent'])
+def recent_movies(message):
+    try:
+        # Last 10 movies nikalo (Nayi se Purani)
+        recent_docs = collection.find().sort('_id', -1).limit(10)
+        
+        markup = types.InlineKeyboardMarkup()
+        count = 0
+        for doc in recent_docs:
+            # Button banao: Movie ka Naam -> Click par ID milegi
+            btn = types.InlineKeyboardButton(doc['name'], callback_data=f"mov:{doc['_id']}")
+            markup.add(btn)
+            count += 1
+        
+        if count == 0:
+            bot.reply_to(message, "❌ Abhi tak koi movie nahi dali hai.")
+        else:
+            bot.reply_to(message, "🎬 **Latest 10 Uploaded Movies:**\nDownload karne ke liye click karein 👇", reply_markup=markup, parse_mode="Markdown")
+    except Exception as e:
+        print(f"Error: {e}")
+        bot.reply_to(message, "❌ Error aa gaya.")
+
+# --- 5. BUTTON CLICK HANDLER (Jab user list par click karega) ---
+@bot.callback_query_handler(func=lambda call: call.data.startswith('mov:'))
+def callback_send_movie(call):
+    try:
+        # Movie ki ID nikalo
+        movie_id = call.data.split(':')[1]
+        doc = collection.find_one({'_id': ObjectId(movie_id)})
+        
+        if doc:
+            # Wahi button wala link lagayenge
+            markup = types.InlineKeyboardMarkup()
+            btn = types.InlineKeyboardButton("⚡ Fast Download / Watch Online ⚡", url=YOUR_PERSONAL_LINK)
+            markup.add(btn)
+            
+            bot.send_video(
+                call.message.chat.id,
+                doc['file_id'],
+                caption=doc['name'],
+                reply_markup=markup
+            )
+        else:
+            bot.answer_callback_query(call.id, "❌ Ye movie shayad delete ho gayi hai.")
+    except Exception as e:
+        print(f"Error: {e}")
 
 # --- SERVER START (FIXED) ---
 keep_alive()
