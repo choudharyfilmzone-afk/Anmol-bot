@@ -4,7 +4,7 @@ import os
 import time
 from telebot import types
 from keep_alive import keep_alive
-from bson.objectid import ObjectId  # 👉 Ye line bahut zaruri hai
+from bson.objectid import ObjectId
 
 # --- CONFIGURATION ---
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -18,8 +18,11 @@ ADMIN_ID = 8578466844
 FORCE_SUB_USERNAME = "@anmol_new" 
 FORCE_SUB_URL = "https://t.me/anmol_new"
 
-# 👉 BUTTON LINK
-YOUR_PERSONAL_LINK = "https://t.me/anmol_movies_update"
+# 👉 DOWNLOAD BUTTON LINK
+YOUR_PERSONAL_LINK = "https://t.me/anmol_new"
+
+# 👉 REQUEST GROUP LINK (Yahan apna group link dalein)
+REQUEST_GROUP_URL = "https://t.me/Anmol_dis" 
 
 # --- DATABASE CONNECT ---
 try:
@@ -99,18 +102,15 @@ def broadcast_message(message):
             
     bot.reply_to(message, f"✅ Sent to {sent} users.")
 
-# --- 3. RECENT MOVIES (NEW FEATURE) ---
+# --- 3. RECENT MOVIES ---
 @bot.message_handler(commands=['recent'])
 def recent_movies(message):
     try:
-        # Last 10 movies nikalo (Nayi se Purani)
         recent_docs = collection.find().sort('_id', -1).limit(10)
         
         markup = types.InlineKeyboardMarkup()
         count = 0
         for doc in recent_docs:
-            # Button banao: Movie ka Naam -> Click par ID milegi
-            # Call data chota rakhna padta hai isliye 'mov:' use kiya
             btn = types.InlineKeyboardButton(doc['name'][:30], callback_data=f"mov:{doc['_id']}")
             markup.add(btn)
             count += 1
@@ -123,7 +123,7 @@ def recent_movies(message):
         print(f"Error: {e}")
         bot.reply_to(message, "❌ Error aa gaya.")
 
-# --- 4. BUTTON CLICK (NEW) ---
+# --- 4. BUTTON CLICK ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith('mov:'))
 def callback_send_movie(call):
     try:
@@ -146,7 +146,7 @@ def callback_send_movie(call):
     except Exception as e:
         print(f"Error: {e}")
 
-# --- 5. MOVIE SEARCH (Default) ---
+# --- 5. MOVIE SEARCH (UPDATED 🆕) ---
 @bot.message_handler(func=lambda m: True)
 def search_movie(message):
     user_id = message.from_user.id
@@ -175,13 +175,22 @@ def search_movie(message):
             reply_markup=markup
         )
     else:
-        bot.reply_to(message, "❌ Movie nahi mili.")
+        # 👇 Yahan change kiya hai: Agar movie na mile to Request Button aayega
+        markup = types.InlineKeyboardMarkup()
+        btn_request = types.InlineKeyboardButton("🙋‍♂️ Request Here", url=REQUEST_GROUP_URL)
+        markup.add(btn_request)
+        
+        bot.reply_to(
+            message, 
+            f"❌ **Movie Nahi Mili: '{query}'**\n\nYe movie database mein nahi hai. Aap humare Group mein jakar maang sakte hain 👇", 
+            parse_mode='Markdown', 
+            reply_markup=markup
+        )
 
 # --- SERVER START ---
 keep_alive()
 print("🤖 Bot Ready! System Online.")
 
-# Auto-Restart Loop
 while True:
     try:
         bot.polling(none_stop=True, interval=0)
