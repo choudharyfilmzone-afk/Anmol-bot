@@ -15,14 +15,14 @@ MONGO_URL = os.environ.get('MONGO_URL')
 ADMIN_ID = 8578466844 
 
 # 👉 FORCE SUBSCRIBE
-FORCE_SUB_USERNAME = "@anmol_new" 
+FORCE_SUB_USERNAME = "@Anmol movies | all movies new" 
 FORCE_SUB_URL = "https://t.me/anmol_new"
 
 # 👉 DOWNLOAD BUTTON LINK
 YOUR_PERSONAL_LINK = "https://t.me/anmol_new"
 
-# 👉 REQUEST GROUP LINK (Yahan apna group link dalein)
-REQUEST_GROUP_URL = "https://t.me/Anmol_dis" 
+# 👉 REQUEST GROUP LINK (Apna Request Group Link yahan dalein)
+REQUEST_GROUP_URL = "https://t.me/Anmol_new" 
 
 # --- DATABASE CONNECT ---
 try:
@@ -107,11 +107,10 @@ def broadcast_message(message):
 def recent_movies(message):
     try:
         recent_docs = collection.find().sort('_id', -1).limit(10)
-        
         markup = types.InlineKeyboardMarkup()
         count = 0
         for doc in recent_docs:
-            btn = types.InlineKeyboardButton(doc['name'][:30], callback_data=f"mov:{doc['_id']}")
+            btn = types.InlineKeyboardButton(doc['name'][:35], callback_data=f"mov:{doc['_id']}")
             markup.add(btn)
             count += 1
         
@@ -121,9 +120,8 @@ def recent_movies(message):
             bot.reply_to(message, "🎬 **Latest 10 Uploaded Movies:**\nDownload karne ke liye click karein 👇", reply_markup=markup, parse_mode="Markdown")
     except Exception as e:
         print(f"Error: {e}")
-        bot.reply_to(message, "❌ Error aa gaya.")
 
-# --- 4. BUTTON CLICK ---
+# --- 4. BUTTON CLICK (List se select karne par) ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith('mov:'))
 def callback_send_movie(call):
     try:
@@ -146,7 +144,7 @@ def callback_send_movie(call):
     except Exception as e:
         print(f"Error: {e}")
 
-# --- 5. MOVIE SEARCH (UPDATED 🆕) ---
+# --- 5. SMART MOVIE SEARCH (NEW FEATURE 🌟) ---
 @bot.message_handler(func=lambda m: True)
 def search_movie(message):
     user_id = message.from_user.id
@@ -160,29 +158,54 @@ def search_movie(message):
         return
     
     query = message.text.strip()
-    result = collection.find_one({"name": {"$regex": query, "$options": "i"}})
+    
+    # Pehle pura naam search karo (Maximum 10 results)
+    results = list(collection.find({"name": {"$regex": query, "$options": "i"}}).limit(10))
+    
+    # Agar kuch na mile, aur naam 4 letter se bada ho, to Smart Search karo (Spelling Fix)
+    if len(results) == 0 and len(query) > 3:
+        short_query = query[:4] # Shuru ke 4 letter le lo (e.g. "Puspa" -> "Pusp")
+        results = list(collection.find({"name": {"$regex": short_query, "$options": "i"}}).limit(10))
 
-    if result:
+    # --- RESULTS DIKHAne KA TARIKA ---
+    if len(results) == 1:
+        # Agar sirf 1 movie mili, to direct bhej do
+        doc = results[0]
         markup = types.InlineKeyboardMarkup()
         btn = types.InlineKeyboardButton("⚡ Fast Download / Watch Online ⚡", url=YOUR_PERSONAL_LINK)
         markup.add(btn)
 
         bot.send_video(
             message.chat.id, 
-            result['file_id'], 
-            caption=result['name'], 
+            doc['file_id'], 
+            caption=doc['name'], 
             parse_mode='HTML', 
             reply_markup=markup
         )
+        
+    elif len(results) > 1:
+        # Agar 1 se zyada movies mili, to list (buttons) dikhao
+        markup = types.InlineKeyboardMarkup()
+        for doc in results:
+            btn = types.InlineKeyboardButton(doc['name'][:35], callback_data=f"mov:{doc['_id']}")
+            markup.add(btn)
+            
+        bot.reply_to(
+            message, 
+            f"🔎 **'{query}' se milti-julti {len(results)} movies mili hain:**\n\n👇 Niche di gayi list mein se apni movie select karein:", 
+            parse_mode='Markdown', 
+            reply_markup=markup
+        )
+        
     else:
-        # 👇 Yahan change kiya hai: Agar movie na mile to Request Button aayega
+        # Agar spelling theek karne ke baad bhi kuch na mile
         markup = types.InlineKeyboardMarkup()
         btn_request = types.InlineKeyboardButton("🙋‍♂️ Request Here", url=REQUEST_GROUP_URL)
         markup.add(btn_request)
         
         bot.reply_to(
             message, 
-            f"❌ **Movie Nahi Mili: '{query}'**\n\nYe movie database mein nahi hai. Aap humare Group mein jakar maang sakte hain 👇", 
+            f"❌ **Movie Nahi Mili: '{query}'**\n\nSpelling check karein ya humare Group mein jakar maang lijiye 👇", 
             parse_mode='Markdown', 
             reply_markup=markup
         )
