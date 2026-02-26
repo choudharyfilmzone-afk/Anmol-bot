@@ -22,7 +22,7 @@ FORCE_SUB_URL = "https://t.me/anmol_new"
 YOUR_PERSONAL_LINK = "https://t.me/anmol_new"
 
 # 👉 REQUEST GROUP LINK (Apna Request Group Link yahan dalein)
-REQUEST_GROUP_URL = "https://t.me/Anmol_new" 
+REQUEST_GROUP_URL = "https://t.me/Anmol_dis" 
 
 # --- DATABASE CONNECT ---
 try:
